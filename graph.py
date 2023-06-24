@@ -104,9 +104,9 @@ if __name__ == '__main__':
     g.add_edge('D', 'E')
     g.add_edge('E', 'F')
     g.add_edge('F', 'D')
-    g.add_edge('I', 'E')
+    g.add_edge('G', 'E')
     g.add_edge('A', 'E')
-    g.add_edge('A', 'I')
+    g.add_edge('A', 'G')
 
     g.dfs('A')
     print("\n^^^^^^^^DFS")
