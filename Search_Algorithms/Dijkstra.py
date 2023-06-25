@@ -1,5 +1,8 @@
+import random
 import heapq
 import networkx as nx
+import matplotlib.pyplot as plt
+
 
 class Graph:
     def __init__(self):
@@ -8,106 +11,140 @@ class Graph:
     def add_node(self, node):
         self.nodes[node] = {}
 
-    def add_edge(self, node1, node2, weight):
-        self.nodes[node1][node2] = weight
-        self.nodes[node2][node1] = weight
+    def add_edge(self, main_node, sub_node, weight):
+        self.nodes[main_node][sub_node] = weight
+        self.nodes[sub_node][main_node] = weight
 
-    def dijkstra(self, start_node):
+    def set_paths(self, main_node, **kwargs):
+        for sub_node, weight in kwargs.items():
+            self.add_edge(main_node, sub_node, weight)
+
+    def dijkstra(self, first_node):
         distances = {node: float('inf') for node in self.nodes}
-        distances[start_node] = 0
+        distances[first_node] = 0
         visited = set()
-        previous = {}
+        end = {}
 
-        priority_queue = [(0, start_node)]
+        queue = [(0, first_node)]
 
-        while priority_queue:
-            current_distance, current_node = heapq.heappop(priority_queue)
+        while queue:
+            current_distance, curr_node = heapq.heappop(queue)
 
-            if current_node in visited:
+            if curr_node in visited:
                 continue
 
-            visited.add(current_node)
+            visited.add(curr_node)
 
-            for neighbor, weight in self.nodes[current_node].items():
+            for next, weight in self.nodes[curr_node].items():
                 distance = current_distance + weight
 
-                if distance < distances[neighbor]:
-                    distances[neighbor] = distance
-                    previous[neighbor] = current_node
-                    heapq.heappush(priority_queue, (distance, neighbor))
+                if distance < distances[next]:
+                    distances[next] = distance
+                    end[next] = curr_node
+                    heapq.heappush(queue, (distance, next))
 
-        return distances, previous
+        return distances, end
 
-# Create the graph
-graph = Graph()
 
-# Add nodes
-graph.add_node('a')
-graph.add_node('b')
-graph.add_node('c')
-graph.add_node('d')
-graph.add_node('e')
+def calculate_paths():
+    global all_paths, node, target_node, path
+    all_paths = {}
+    for node in graph.nodes:
+        distances, previous = graph.dijkstra(node)
+        path_info = {}
+        for target_node in distances:
+            if target_node != node:
+                path = []
+                current_node = target_node
+                while current_node != node:
+                    path.append(current_node)
+                    current_node = previous[current_node]
+                path.append(node)
+                path.reverse()
+                path_weight = sum(graph.nodes[path[i]][path[i + 1]] for i in range(len(path) - 1))
+                path_info[target_node] = path_weight
+        all_paths[node] = path_info
 
-# Add edges
-graph.add_edge('a', 'b', 5)
-graph.add_edge('a', 'c', 8)
-graph.add_edge('b', 'd', 9)
-graph.add_edge('c', 'd', 2)
-graph.add_edge('c', 'e', 7)
-graph.add_edge('d', 'e', 6)
 
-# Calculate paths using Dijkstra's algorithm
-distances, previous = graph.dijkstra('a')
+def create_graph():
+    global graph
+    # Create the graph
+    graph = Graph()
+    # Add nodes
+    graph.add_node('A')
+    graph.add_node('B')
+    graph.add_node('C')
+    graph.add_node('D')
+    graph.add_node('E')
+    graph.add_node('F')
+    graph.add_node('G')
+    # Set paths from node A
+    graph.set_paths('A', B=5, G=5)
+    # Set paths from node B
+    graph.set_paths('B', C=3, D=3, G=5)
+    # Set paths from node C
+    graph.set_paths('C', D=1, B=3)
+    # Set paths from node D
+    graph.set_paths('D', C=1, B=3, G=3, E=5)
+    # Set paths from node E
+    graph.set_paths('E', F=2, D=5)
+    # Set paths from node F
+    graph.set_paths('F', G=5, D=4, E=2)
+    graph.set_paths('G', A=5, B=5, D=3, F=5)
 
-# Display the results
-print("Start node:", 'a')
-print("Visited vertices:", list(distances.keys()))
-print("Sum of paths:", sum(distances.values()))
-print("")
 
-# Present the paths in a table format
-print("Paths:")
-for node in distances:
-    if node == 'a':
-        continue
+create_graph()
 
-    path = []
-    current = node
 
-    while current != 'a':
-        path.append(current)
-        current = previous[current]
+def display_paths():
+    global node, paths, target_node, weight, path
+    print("Paths:")
+    printed_paths = set()
+    for node, paths in all_paths.items():
+        for target_node, weight in paths.items():
+            path = f"{node} - {target_node}"
+            if path not in printed_paths:
+                print(f"{path} : {weight}")
+                printed_paths.add(path)
 
-    path.append('a')
-    path.reverse()
-    print(f"{node} - {' - '.join(path)} : {distances[node]}")
 
-# Check if these are the shortest paths
-shortest_paths = {
-    'a': {'b': 5, 'c': 8},
-    'b': {'a': 5, 'd': 9},
-    'c': {'a': 8, 'd': 2, 'e': 7},
-    'd': {'b': 9, 'c': 2, 'e': 6},
-    'e': {'c': 7, 'd': 6}
-}
+def vizualize_graph():
+    global nx_graph, pos
+    # Visualize the graph
+    nx_graph = nx.Graph(graph.nodes)
+    pos = nx.spring_layout(nx_graph)
+    nx.draw(nx_graph, pos, with_labels=True)
 
-are_shortest_paths = all(shortest_paths[node].get(neighbor, float('inf')) == distances[neighbor]
-                         for node in shortest_paths
-                         for neighbor in shortest_paths[node])
 
-print("")
-print("Are these the shortest paths?", are_shortest_paths)
+def add_path_labels():
+    global path_labels, node, paths, target_node, weight, path
+    # Add path labels (connection weights) to the graph visualization
+    path_labels = {}
+    for node, paths in all_paths.items():
+        for target_node, weight in paths.items():
+            path = f"{node} - {target_node}"
+            path_labels[(node, target_node)] = f"{path}: {weight}"
 
-# Create a NetworkX graph
-nx_graph = nx.Graph()
 
-# Add nodes and edges to the NetworkX graph
-for node in graph.nodes:
-    nx_graph.add_node(node)
+def vizualize_edges():
+    edge_labels = nx.get_edge_attributes(nx_graph, 'weight')
+    nx.draw_networkx_edge_labels(nx_graph, pos, edge_labels=edge_labels, font_color='red', label_pos=0.5)
 
-for node1, neighbors in graph.nodes.items():
-    for node2, weight in neighbors.items():
-        nx_graph.add_edge(node1, node2, weight=weight)
 
-# Visualize the graph
-pos = nx.spring_layout(nx_graph)
+calculate_paths()
+
+
+display_paths()
+
+
+vizualize_graph()
+
+
+vizualize_edges()
+
+
+add_path_labels()
+
+nx.draw_networkx_edge_labels(nx_graph, pos, edge_labels=path_labels, font_color='blue', label_pos=0.5, rotate=False)
+
+plt.show()
